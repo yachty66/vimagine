@@ -42,8 +42,33 @@ export default function VideoEditorPage() {
   );
 
   // Load user's projects on component mount
+  // TEMPORARILY COMMENTED OUT FOR TESTING
+  // useEffect(() => {
+  //   loadUserProjects();
+  // }, []);
+
+  // TEMPORARY: Set mock data instead of loading from Supabase
   useEffect(() => {
-    loadUserProjects();
+    setIsLoadingProjects(true);
+    // Simulate loading
+    setTimeout(() => {
+      const mockProjects: Project[] = [
+        {
+          id: 1,
+          name: "My First Video",
+          created_at: new Date().toISOString(),
+          user_id: "mock-user",
+        },
+        {
+          id: 2,
+          name: "Summer Vacation",
+          created_at: new Date(Date.now() - 86400000).toISOString(),
+          user_id: "mock-user",
+        },
+      ];
+      setProjects(mockProjects);
+      setIsLoadingProjects(false);
+    }, 800);
   }, []);
 
   const loadUserProjects = async () => {
