@@ -51,28 +51,6 @@ export default function VideoEditorPage() {
       setIsLoadingProjects(true);
       setLoadError(null);
 
-      // TEMPORARY: Skip authentication and use mock data
-      await new Promise((resolve) => setTimeout(resolve, 800)); // Simulate loading
-
-      // Mock projects data
-      const mockProjects: Project[] = [
-        {
-          id: 1,
-          name: "My First Video",
-          created_at: new Date().toISOString(),
-          user_id: "mock-user-id",
-        },
-        {
-          id: 2,
-          name: "Summer Vacation Edit",
-          created_at: new Date(Date.now() - 86400000).toISOString(), // Yesterday
-          user_id: "mock-user-id",
-        },
-      ];
-
-      setProjects(mockProjects);
-
-      /* COMMENTED OUT FOR TESTING - UNCOMMENT WHEN SUPABASE IS READY
       // Get current user
       const {
         data: { user },
@@ -106,7 +84,6 @@ export default function VideoEditorPage() {
 
       console.log("Fetched projects:", userProjects);
       setProjects(userProjects || []);
-      */
     } catch (error) {
       console.error("Failed to load projects:", error);
       setLoadError(
@@ -121,26 +98,6 @@ export default function VideoEditorPage() {
     setIsCreating(true);
 
     try {
-      // TEMPORARY: Skip authentication and create mock project
-      await new Promise((resolve) => setTimeout(resolve, 800)); // Simulate loading
-
-      const mockProject: Project = {
-        id: Date.now(), // Use timestamp as mock ID
-        name: "untitled_project",
-        created_at: new Date().toISOString(),
-        user_id: "mock-user-id",
-      };
-
-      // Add to local state
-      setProjects((prev) => [mockProject, ...prev]);
-
-      // Store project data and navigate
-      localStorage.setItem("currentProjectId", mockProject.id.toString());
-      localStorage.setItem("currentProjectName", mockProject.name);
-
-      router.push("/inference/editor/main");
-
-      /* COMMENTED OUT FOR TESTING - UNCOMMENT WHEN SUPABASE IS READY
       // Add minimum loading time so user sees feedback
       const [projectResult] = await Promise.all([
         // Create project
@@ -189,7 +146,6 @@ export default function VideoEditorPage() {
       localStorage.setItem("currentProjectName", projectResult.name);
 
       router.push("/inference/editor/main");
-      */
     } catch (error) {
       console.error("Failed to create project:", error);
       alert(
