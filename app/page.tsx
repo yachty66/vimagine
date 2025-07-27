@@ -64,43 +64,33 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-
-          {/* Pure Black & White Examples */}
-          <div className="grid md:grid-cols-3 gap-4">
-            {[
-              {
-                title: "Product Demo",
-                desc: "Create engaging product showcases",
-              },
-              {
-                title: "Social Content",
-                desc: "Generate viral social media videos",
-              },
-              {
-                title: "Explainer Video",
-                desc: "Turn complex ideas into simple videos",
-              },
-            ].map((example, i) => (
-              <Card
-                key={i}
-                className="group hover:border-white transition-colors bg-black border-white/20 cursor-pointer"
-              >
-                <CardContent className="p-4">
-                  <div className="aspect-video bg-white/10 rounded-lg mb-3 relative overflow-hidden">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Play className="w-8 h-8 text-white/60 group-hover:text-white transition-colors" />
-                    </div>
-                  </div>
-                  <h3 className="font-medium text-white text-sm mb-1">
-                    {example.title}
-                  </h3>
-                  <p className="text-xs text-white/60">{example.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
         </div>
       </main>
+
+      {/* From the Community Section */}
+      <section className="max-w-7xl mx-auto px-6 pb-24">
+        <h2 className="text-2xl font-bold text-white mb-8 text-center">
+          From the Community
+        </h2>
+
+        {/* 4x4 Grid of Placeholders */}
+        <div className="grid grid-cols-4 gap-4">
+          {Array.from({ length: 16 }, (_, i) => (
+            <Card
+              key={i}
+              className="group hover:border-white transition-colors bg-black border-white/20 cursor-pointer"
+            >
+              <CardContent className="p-3">
+                <div className="aspect-video bg-white/10 rounded-lg relative overflow-hidden">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Play className="w-6 h-6 text-white/60 group-hover:text-white transition-colors" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
 
       {/* Pure Black & White Footer */}
       <footer className="border-t border-white/20 mt-16">
