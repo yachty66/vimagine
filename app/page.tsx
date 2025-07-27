@@ -1,8 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Play, ArrowUp, Video, Sparkles, Zap, Globe } from "lucide-react";
+import { Play, ArrowUp, Video } from "lucide-react";
 import Link from "next/link";
+
+// Custom X (formerly Twitter) icon component
+const XIcon = ({ className }: { className?: string }) => (
+  <svg
+    viewBox="0 0 24 24"
+    className={className}
+    fill="currentColor"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
 
 export default function HomePage() {
   return (
@@ -40,11 +52,11 @@ export default function HomePage() {
       <main className="max-w-4xl mx-auto px-6 pt-16 pb-24">
         <div className="text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
-            Create videos with
-            <span className="text-white"> AI</span>
+            Imagine something
+            <span className="text-white"> unique</span>
           </h1>
           <p className="text-lg text-white/70 mb-12 max-w-2xl mx-auto">
-            Create videos by imagining everything with AI
+            Create videos by chatting with AI
           </p>
 
           {/* Pure Black & White Input */}
@@ -104,17 +116,14 @@ export default function HomePage() {
                 Vimagine
               </span>
             </div>
-            <div className="flex items-center space-x-6 text-sm text-white/70">
-              <Link href="#" className="hover:text-white transition-colors">
-                Privacy
-              </Link>
-              <Link href="#" className="hover:text-white transition-colors">
-                Terms
-              </Link>
-              <Link href="#" className="hover:text-white transition-colors">
-                Support
-              </Link>
-            </div>
+            <Link
+              href="https://x.com/unitedcompute"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-white/70 hover:text-white transition-colors"
+            >
+              <XIcon className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       </footer>
