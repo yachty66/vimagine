@@ -2,7 +2,7 @@ import React from "react";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { CreditProvider } from "../../../CreditContext";
+// import { CreditProvider } from "../../../CreditContext"; // Temporarily commented out
 
 export default async function MainEditorLayout({
   children,
@@ -44,10 +44,10 @@ export default async function MainEditorLayout({
 
   // Simple layout that completely overrides the parent layout
   return (
-    <CreditProvider initialCredits={profile?.credits ?? 0}>
-      <div className="fixed inset-0 bg-zinc-950 text-white overflow-hidden z-[9999]">
-        {children}
-      </div>
-    </CreditProvider>
+    // <CreditProvider initialCredits={profile?.credits ?? 0}> {/* Temporarily commented out */}
+    <div className="fixed inset-0 bg-zinc-950 text-white overflow-hidden z-[9999]">
+      {children}
+    </div>
+    // </CreditProvider> {/* Temporarily commented out */}
   );
 }

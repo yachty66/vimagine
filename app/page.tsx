@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Play, ArrowUp, Video, Plus } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation"; // Add this import
 import { signInWithGoogle, getCurrentUser, signOut } from "@/lib/auth";
 import supabase from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
@@ -23,6 +24,7 @@ const XIcon = ({ className }: { className?: string }) => (
 );
 
 export default function HomePage() {
+  const router = useRouter(); // Add this line
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -86,6 +88,11 @@ export default function HomePage() {
     } catch (error) {
       alert("Failed to sign out. Please try again.");
     }
+  };
+
+  // Handle creating a new project
+  const handleNewProject = () => {
+    router.push("/main");
   };
 
   // Get user's profile picture URL
@@ -195,8 +202,8 @@ export default function HomePage() {
                     if (!user) {
                       handleGetStarted();
                     } else {
-                      // Handle video creation for logged in users
-                      alert("Video creation coming soon!");
+                      // Navigate to main page for video creation
+                      router.push("/main");
                     }
                   }}
                 >
@@ -217,7 +224,7 @@ export default function HomePage() {
               variant="outline"
               size="sm"
               className="border-white/20 text-white hover:bg-white hover:text-black"
-              onClick={() => alert("Create new project coming soon!")}
+              onClick={handleNewProject} // Updated to use the new handler
             >
               <Plus className="w-4 h-4 mr-2" />
               New Project
@@ -230,6 +237,7 @@ export default function HomePage() {
               <Card
                 key={i}
                 className="group hover:border-white transition-colors bg-black border-white/20 cursor-pointer"
+                onClick={handleNewProject} // Also make project cards clickable
               >
                 <CardContent className="p-3">
                   <div className="aspect-video bg-white/5 rounded-lg relative overflow-hidden border border-white/10">
