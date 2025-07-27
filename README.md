@@ -53,3 +53,20 @@ export default nextConfig;
 ```bash
 vercel
 ```
+
+
+## vimagine v2
+
+
+- landing page
+- project overview page
+- generator
+  - hook it up with all of the runware models
+  - how does the best interface for video generation look like
+
+
+## video gen automation
+
+philipp would like to make the 
+
+instead of reinventing the wheel what would be great to have veo3 like templates 
