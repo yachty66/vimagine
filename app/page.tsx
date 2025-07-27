@@ -1,8 +1,14 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Play, ArrowUp, Video } from "lucide-react";
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { signInWithGoogle, getCurrentUser, signOut } from "@/lib/auth";
+import supabase from "@/lib/supabase";
+import type { User } from "@supabase/supabase-js";
 
 // Custom X (formerly Twitter) icon component
 const XIcon = ({ className }: { className?: string }) => (
@@ -17,6 +23,79 @@ const XIcon = ({ className }: { className?: string }) => (
 );
 
 export default function HomePage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check if user is already logged in and listen for auth changes
+  useEffect(() => {
+    const checkUser = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        setUser(currentUser);
+      } catch (error) {
+        console.error("Error checking user:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkUser();
+
+    // Listen for auth state changes (when user returns from Google OAuth)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        setUser(session.user);
+        setIsLoading(false);
+      } else if (event === "SIGNED_OUT") {
+        setUser(null);
+        setIsLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      alert("Failed to sign in. Please try again.");
+    }
+  };
+
+  const handleGetStarted = async () => {
+    try {
+      if (user) {
+        // User is already logged in, could trigger video creation flow
+        alert("You're already signed in! Video creation coming soon.");
+      } else {
+        // Sign up with Google
+        await signInWithGoogle();
+      }
+    } catch (error) {
+      alert("Failed to get started. Please try again.");
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      setUser(null);
+    } catch (error) {
+      alert("Failed to sign out. Please try again.");
+    }
+  };
+
+  // Get user's profile picture URL
+  const getProfilePictureUrl = (user: User) => {
+    // Try to get Google profile picture from user metadata
+    const avatarUrl =
+      user.user_metadata?.avatar_url || user.user_metadata?.picture;
+    return avatarUrl;
+  };
+
   return (
     <div className="min-h-screen bg-black">
       {/* Pure Black & White Header */}
@@ -30,19 +109,56 @@ export default function HomePage() {
               <span className="text-lg font-semibold text-white">Vimagine</span>
             </Link>
             <div className="flex items-center space-x-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white hover:text-black hover:bg-white"
-              >
-                Log in
-              </Button>
-              <Button
-                size="sm"
-                className="bg-white text-black hover:bg-white/90"
-              >
-                Get started
-              </Button>
+              {isLoading ? (
+                <div className="w-8 h-8 bg-white/10 rounded-full animate-pulse"></div>
+              ) : user ? (
+                <div className="flex items-center space-x-3">
+                  {/* User Profile Picture */}
+                  <div className="relative group">
+                    <img
+                      src={
+                        getProfilePictureUrl(user) ||
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                          user.email || "User"
+                        )}&background=ffffff&color=000000`
+                      }
+                      alt="Profile"
+                      className="w-8 h-8 rounded-full cursor-pointer hover:ring-2 hover:ring-white/50 transition-all"
+                      onClick={() => {
+                        // Show a small dropdown or menu on click
+                        const confirmSignOut = window.confirm(
+                          "Do you want to sign out?"
+                        );
+                        if (confirmSignOut) {
+                          handleSignOut();
+                        }
+                      }}
+                    />
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-white text-black text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                      {user.email}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:text-black hover:bg-white"
+                    onClick={handleSignIn}
+                  >
+                    Log in
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-white text-black hover:bg-white/90"
+                    onClick={handleGetStarted}
+                  >
+                    Get started
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -64,12 +180,25 @@ export default function HomePage() {
             <div className="relative bg-black rounded-xl border border-white/30 p-4">
               <div className="flex items-center space-x-3">
                 <Input
-                  placeholder="Describe your video idea..."
+                  placeholder={
+                    user
+                      ? "Describe your video idea..."
+                      : "Sign in to create videos..."
+                  }
                   className="flex-1 border-0 text-base placeholder:text-white/50 focus-visible:ring-0 bg-transparent text-white"
+                  disabled={!user}
                 />
                 <Button
                   size="icon"
                   className="bg-white hover:bg-white/90 text-black rounded-lg w-10 h-10 shrink-0"
+                  onClick={() => {
+                    if (!user) {
+                      handleGetStarted();
+                    } else {
+                      // Handle video creation for logged in users
+                      alert("Video creation coming soon!");
+                    }
+                  }}
                 >
                   <ArrowUp className="w-4 h-4" />
                 </Button>
