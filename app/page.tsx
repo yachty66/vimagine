@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Play, ArrowUp, Video } from "lucide-react";
+import { Play, ArrowUp, Video, Plus } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { signInWithGoogle, getCurrentUser, signOut } from "@/lib/auth";
@@ -208,13 +208,58 @@ export default function HomePage() {
         </div>
       </main>
 
+      {/* My Projects Section - Only show when authenticated */}
+      {user && (
+        <section className="max-w-7xl mx-auto px-6 pb-16">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl font-bold text-white">My Projects</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-white/20 text-white hover:bg-white hover:text-black"
+              onClick={() => alert("Create new project coming soon!")}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New Project
+            </Button>
+          </div>
+
+          {/* 4x2 Grid of Project Placeholders */}
+          <div className="grid grid-cols-4 gap-4">
+            {Array.from({ length: 8 }, (_, i) => (
+              <Card
+                key={i}
+                className="group hover:border-white transition-colors bg-black border-white/20 cursor-pointer"
+              >
+                <CardContent className="p-3">
+                  <div className="aspect-video bg-white/5 rounded-lg relative overflow-hidden border border-white/10">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        <Video className="w-8 h-8 text-white/40 mx-auto mb-2" />
+                        <p className="text-xs text-white/60">Project {i + 1}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-2">
+                    <h3 className="text-sm font-medium text-white/80 truncate">
+                      Untitled Project {i + 1}
+                    </h3>
+                    <p className="text-xs text-white/50 mt-1">Created today</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* From the Community Section */}
       <section className="max-w-7xl mx-auto px-6 pb-24">
         <h2 className="text-2xl font-bold text-white mb-8 text-center">
           From the Community
         </h2>
 
-        {/* 4x4 Grid of Placeholders */}
+        {/* 4x4 Grid of Community Placeholders */}
         <div className="grid grid-cols-4 gap-4">
           {Array.from({ length: 16 }, (_, i) => (
             <Card
