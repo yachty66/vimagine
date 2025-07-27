@@ -70,3 +70,5 @@ vercel
 philipp would like to make the 
 
 instead of reinventing the wheel what would be great to have veo3 like templates 
+
+- 
