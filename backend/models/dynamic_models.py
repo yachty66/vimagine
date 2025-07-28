@@ -3,6 +3,10 @@ from fastapi import APIRouter, Request, HTTPException, Depends
 from supabase import create_client, Client
 import uuid
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 router = APIRouter()
 
