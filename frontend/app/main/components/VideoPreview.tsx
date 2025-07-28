@@ -13,6 +13,9 @@ import {
   Loader2,
 } from "lucide-react";
 
+// Get base URL from environment
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000";
+
 interface MediaItem {
   id: string;
   type: "video" | "image" | "audio";
@@ -310,7 +313,7 @@ export default function VideoPreview({
 
       // Send timeline data to backend for video composition
       const response = await fetch(
-        "http://localhost:8000/api/py/video-composer/compose-video",
+        `${BASE_URL}/api/py/video-composer/compose-video`,
         {
           method: "POST",
           headers: {
@@ -359,7 +362,7 @@ export default function VideoPreview({
     while (attempts < maxAttempts) {
       try {
         const response = await fetch(
-          `http://localhost:8000/api/py/video-composer/compose-video/status/${jobId}`
+          `${BASE_URL}/api/py/video-composer/compose-video/status/${jobId}`
         );
 
         if (!response.ok) {

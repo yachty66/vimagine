@@ -1,5 +1,8 @@
 import supabase from "@/lib/supabase";
 
+// Get base URL from environment
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000";
+
 // Interface for model data from database
 interface ModelData {
   name: string;
@@ -46,7 +49,7 @@ export async function generateContent(
 }> {
   try {
     const response = await fetch(
-      `http://localhost:8000/api/models/generate/${modelName}`,
+      `${BASE_URL}/api/models/generate/${modelName}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -82,9 +85,7 @@ export async function pollJobStatus(jobId: string): Promise<{
   resultUrl?: string;
   error?: string;
 }> {
-  const response = await fetch(
-    `http://localhost:8000/api/models/status/${jobId}`
-  );
+  const response = await fetch(`${BASE_URL}/api/models/status/${jobId}`);
   if (!response.ok) {
     return { status: "failed", error: "Failed to check job status" };
   }
