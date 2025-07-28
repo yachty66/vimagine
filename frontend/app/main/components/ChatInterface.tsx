@@ -4,52 +4,56 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send } from "lucide-react";
-import { generateFluxImageDirect } from "./action"; // Import the direct function
-import supabase from "@/lib/supabase";
+import { generateImage } from "./action";
 
-// A simpler MediaItem for our new, faster flow
 interface MediaItem {
   id: string;
-  type: "image"; // Only image is supported now
+  type: "video" | "image" | "audio"; // Match the parent's interface
   name: string;
   url: string;
-  thumbnail?: string;
+  thumbnail?: string; // Make optional to match parent
+  isPending?: boolean; // Add this for compatibility
+  jobId?: string; // Add this for compatibility
 }
 
 interface ChatInterfaceProps {
+  mediaLibrary: MediaItem[];
   setMediaLibrary: (
     items: MediaItem[] | ((prev: MediaItem[]) => MediaItem[])
   ) => void;
 }
 
-export default function ChatInterface({ setMediaLibrary }: ChatInterfaceProps) {
+export default function ChatInterface({
+  mediaLibrary,
+  setMediaLibrary,
+}: ChatInterfaceProps) {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSendPrompt = async () => {
+  const handleGenerate = async () => {
     if (!prompt.trim() || isGenerating) return;
 
     setIsGenerating(true);
     setError(null);
 
-    // Use the direct function instead of the class method
-    const response = await generateFluxImageDirect(prompt);
+    const result = await generateImage(prompt);
 
-    if (response.success && response.result_url) {
-      const newMediaItem: MediaItem = {
-        id: `media-${Date.now()}`,
+    if (result.success && result.imageUrl) {
+      const newImage: MediaItem = {
+        id: `img-${Date.now()}`,
         type: "image",
-        name: `Generated: ${prompt.substring(0, 30)}...`,
-        url: response.result_url,
-        thumbnail: response.result_url,
+        name: `Generated: ${prompt.slice(0, 30)}...`,
+        url: result.imageUrl,
+        thumbnail: result.imageUrl,
+        isPending: false,
       };
 
-      setMediaLibrary((prev) => [newMediaItem, ...prev]);
-      saveGeneratedMediaToSupabase(newMediaItem);
+      // Use the setMediaLibrary function from props
+      setMediaLibrary((prev) => [newImage, ...prev]);
       setPrompt(""); // Clear prompt on success
     } else {
-      setError(response.error || "An unknown error occurred.");
+      setError(result.error || "Failed to generate image");
     }
 
     setIsGenerating(false);
@@ -58,7 +62,7 @@ export default function ChatInterface({ setMediaLibrary }: ChatInterfaceProps) {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSendPrompt();
+      handleGenerate();
     }
   };
 
@@ -83,7 +87,7 @@ export default function ChatInterface({ setMediaLibrary }: ChatInterfaceProps) {
           />
 
           <Button
-            onClick={handleSendPrompt}
+            onClick={handleGenerate}
             disabled={!prompt.trim() || isGenerating}
             className="absolute right-2 bottom-2 w-8 h-8 p-0 rounded-lg bg-white hover:bg-gray-100 disabled:bg-zinc-700 text-black"
           >
@@ -98,19 +102,3 @@ export default function ChatInterface({ setMediaLibrary }: ChatInterfaceProps) {
     </div>
   );
 }
-
-// This function can remain as it is, saving the result to the database.
-const saveGeneratedMediaToSupabase = async (mediaItem: MediaItem) => {
-  try {
-    const projectId = localStorage.getItem("currentProjectId");
-    if (!projectId) return;
-
-    await supabase.from("ai_editor_media_files").insert({
-      project_id: projectId,
-      file_url: mediaItem.url,
-      type: mediaItem.type,
-    });
-  } catch (error) {
-    console.error("Error saving generated media to Supabase:", error);
-  }
-};
