@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Image, Video } from "lucide-react";
+import { Send, Image, Video, Upload, X } from "lucide-react";
 import { generateContent, getAvailableModels, pollJobStatus } from "./action";
 
 interface ModelData {
@@ -42,6 +42,11 @@ export default function ChatInterface({
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [models, setModels] = useState<ModelData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [referenceImage, setReferenceImage] = useState<File | null>(null);
+  const [referenceImagePreview, setReferenceImagePreview] = useState<
+    string | null
+  >(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load models on component mount
   useEffect(() => {
@@ -76,25 +81,84 @@ export default function ChatInterface({
   const filteredModels = models.filter((m) => m.category === selectedType);
   const currentModel = models.find((m) => m.name === selectedModel);
 
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith("image/")) {
+      setReferenceImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setReferenceImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeReferenceImage = () => {
+    setReferenceImage(null);
+    setReferenceImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const uploadImageToStorage = async (file: File): Promise<string> => {
+    // Convert to base64 for now - you might want to use a proper image hosting service
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleGenerate = async () => {
     if (!prompt.trim() || isGenerating || !selectedModel) return;
+
+    // Check if reference image is required
+    const model = models.find((m) => m.name === selectedModel);
+    if (model?.reference_image_support === "required" && !referenceImage) {
+      setError("This model requires a reference image");
+      return;
+    }
 
     setIsGenerating(true);
     setError(null);
     const promptToSend = prompt;
     setPrompt(""); // Clear prompt immediately
 
-    const response = await generateContent(selectedModel, promptToSend);
+    let extraParams: Record<string, any> = {};
+
+    // Add reference image if provided
+    if (referenceImage) {
+      try {
+        const imageData = await uploadImageToStorage(referenceImage);
+        extraParams.inputImage = imageData; // or whatever field name Runware expects
+      } catch (error) {
+        setError("Failed to process reference image");
+        setIsGenerating(false);
+        return;
+      }
+    }
+
+    const response = await generateContent(
+      selectedModel,
+      promptToSend,
+      extraParams
+    );
 
     if (response.success) {
       if (response.resultUrl) {
         // --- SYNC FLOW (Image) ---
         addMediaItem(response.resultUrl, promptToSend);
+        // Clear reference image after successful generation
+        removeReferenceImage();
       } else if (response.jobId) {
         // --- ASYNC FLOW (Video) ---
         const pendingId = `pending-${response.jobId}`;
         addPendingItem(pendingId, promptToSend);
         pollForCompletion(response.jobId, pendingId, promptToSend);
+        // Clear reference image after starting job
+        removeReferenceImage();
       }
     } else {
       setError(response.error || `Failed to generate ${selectedType}`);
@@ -165,6 +229,19 @@ export default function ChatInterface({
     }
   };
 
+  const shouldShowImageUpload = () => {
+    const model = models.find((m) => m.name === selectedModel);
+    return (
+      model?.reference_image_support === "required" ||
+      model?.reference_image_support === "optional"
+    );
+  };
+
+  const isImageUploadRequired = () => {
+    const model = models.find((m) => m.name === selectedModel);
+    return model?.reference_image_support === "required";
+  };
+
   if (loading) {
     return (
       <div className="p-4 bg-zinc-900 border-t border-zinc-800">
@@ -220,10 +297,61 @@ export default function ChatInterface({
             {filteredModels.map((model) => (
               <option key={model.name} value={model.name}>
                 {model.display_name} - ${model.price}
+                {model.reference_image_support === "required" &&
+                  " (Requires Image)"}
+                {model.reference_image_support === "optional" &&
+                  " (Optional Image)"}
               </option>
             ))}
           </select>
         </div>
+
+        {/* Reference Image Upload */}
+        {shouldShowImageUpload() && (
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm text-zinc-300">
+                Reference Image{" "}
+                {isImageUploadRequired() && (
+                  <span className="text-red-400">*</span>
+                )}
+              </span>
+            </div>
+
+            {referenceImagePreview ? (
+              <div className="relative inline-block">
+                <img
+                  src={referenceImagePreview}
+                  alt="Reference"
+                  className="w-20 h-20 object-cover rounded-lg border border-zinc-600"
+                />
+                <button
+                  onClick={removeReferenceImage}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white text-xs"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 px-3 py-2 bg-zinc-700 hover:bg-zinc-600 border border-zinc-600 rounded-lg text-sm text-zinc-300 transition-colors"
+                >
+                  <Upload className="w-4 h-4" />
+                  Upload Image
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="relative">
           <Textarea
@@ -238,7 +366,12 @@ export default function ChatInterface({
 
           <Button
             onClick={handleGenerate}
-            disabled={!prompt.trim() || isGenerating || !selectedModel}
+            disabled={
+              !prompt.trim() ||
+              isGenerating ||
+              !selectedModel ||
+              (isImageUploadRequired() && !referenceImage)
+            }
             className="absolute right-2 bottom-2 w-8 h-8 p-0 rounded-lg bg-white hover:bg-gray-100 disabled:bg-zinc-700 text-black"
           >
             {isGenerating ? (
