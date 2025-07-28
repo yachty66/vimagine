@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Play, ArrowUp, Video, Plus } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation"; // Add this import
+import { useRouter } from "next/navigation";
 import { signInWithGoogle, getCurrentUser, signOut } from "@/lib/auth";
 import supabase from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
@@ -23,10 +23,20 @@ const XIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+// Project interface
+interface Project {
+  id: number;
+  name: string;
+  created_at: string;
+  user_id: string;
+}
+
 export default function HomePage() {
-  const router = useRouter(); // Add this line
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
 
   // Check if user is already logged in and listen for auth changes
   useEffect(() => {
@@ -52,12 +62,63 @@ export default function HomePage() {
         setIsLoading(false);
       } else if (event === "SIGNED_OUT") {
         setUser(null);
+        setProjects([]); // Clear projects when user signs out
         setIsLoading(false);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Load user's projects when user is available
+  useEffect(() => {
+    if (user) {
+      loadUserProjects();
+    }
+  }, [user]);
+
+  // Function to load user's projects from Supabase
+  const loadUserProjects = async () => {
+    if (!user) return;
+
+    setIsLoadingProjects(true);
+    try {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error loading projects:", error);
+        return;
+      }
+
+      setProjects(data || []);
+    } catch (error) {
+      console.error("Error loading projects:", error);
+    } finally {
+      setIsLoadingProjects(false);
+    }
+  };
+
+  // Function to format date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+    if (diffInDays === 0) {
+      return "Created today";
+    } else if (diffInDays === 1) {
+      return "Created yesterday";
+    } else if (diffInDays < 7) {
+      return `Created ${diffInDays} days ago`;
+    } else {
+      return `Created ${date.toLocaleDateString()}`;
+    }
+  };
 
   const handleSignIn = async () => {
     try {
@@ -70,8 +131,8 @@ export default function HomePage() {
   const handleGetStarted = async () => {
     try {
       if (user) {
-        // User is already logged in, could trigger video creation flow
-        alert("You're already signed in! Video creation coming soon.");
+        // User is already logged in, create a new project
+        await handleNewProject();
       } else {
         // Sign up with Google
         await signInWithGoogle();
@@ -85,6 +146,7 @@ export default function HomePage() {
     try {
       await signOut();
       setUser(null);
+      setProjects([]);
     } catch (error) {
       alert("Failed to sign out. Please try again.");
     }
@@ -120,6 +182,11 @@ export default function HomePage() {
       console.error("Error creating project:", error);
       alert("Failed to create project. Please try again.");
     }
+  };
+
+  // Handle clicking on an existing project
+  const handleProjectClick = (project: Project) => {
+    router.push(`/main?projectId=${project.id}`);
   };
 
   // Get user's profile picture URL
@@ -230,7 +297,7 @@ export default function HomePage() {
                       handleGetStarted();
                     } else {
                       // Navigate to main page for video creation
-                      router.push("/main");
+                      handleNewProject();
                     }
                   }}
                 >
@@ -258,33 +325,62 @@ export default function HomePage() {
             </Button>
           </div>
 
-          {/* 4x2 Grid of Project Placeholders */}
-          <div className="grid grid-cols-4 gap-4">
-            {Array.from({ length: 8 }, (_, i) => (
-              <Card
-                key={i}
-                className="group hover:border-white transition-colors bg-black border-white/20 cursor-pointer"
-                onClick={handleNewProject} // Also make project cards clickable
-              >
-                <CardContent className="p-3">
-                  <div className="aspect-video bg-white/5 rounded-lg relative overflow-hidden border border-white/10">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="text-center">
-                        <Video className="w-8 h-8 text-white/40 mx-auto mb-2" />
-                        <p className="text-xs text-white/60">Project {i + 1}</p>
+          {/* Projects Grid */}
+          {isLoadingProjects ? (
+            <div className="grid grid-cols-4 gap-4">
+              {/* Loading skeleton */}
+              {Array.from({ length: 4 }, (_, i) => (
+                <Card
+                  key={i}
+                  className="bg-black border-white/20 animate-pulse"
+                >
+                  <CardContent className="p-3">
+                    <div className="aspect-video bg-white/5 rounded-lg border border-white/10"></div>
+                    <div className="mt-2">
+                      <div className="h-4 bg-white/10 rounded mb-1"></div>
+                      <div className="h-3 bg-white/5 rounded w-2/3"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : projects.length > 0 ? (
+            <div className="grid grid-cols-4 gap-4">
+              {projects.map((project) => (
+                <Card
+                  key={project.id}
+                  className="group hover:border-white transition-colors bg-black border-white/20 cursor-pointer"
+                  onClick={() => handleProjectClick(project)}
+                >
+                  <CardContent className="p-3">
+                    <div className="aspect-video bg-white/5 rounded-lg relative overflow-hidden border border-white/10">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-center">
+                          <Video className="w-8 h-8 text-white/40 mx-auto mb-2" />
+                          <p className="text-xs text-white/60">
+                            {project.name}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="mt-2">
-                    <h3 className="text-sm font-medium text-white/80 truncate">
-                      Untitled Project {i + 1}
-                    </h3>
-                    <p className="text-xs text-white/50 mt-1">Created today</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    <div className="mt-2">
+                      <h3 className="text-sm font-medium text-white/80 truncate">
+                        {project.name}
+                      </h3>
+                      <p className="text-xs text-white/50 mt-1">
+                        {formatDate(project.created_at)}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            // Empty state when no projects - simplified
+            <div className="text-center py-16">
+              <p className="text-white/60 text-lg">No projects found</p>
+            </div>
+          )}
         </section>
       )}
 
