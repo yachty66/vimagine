@@ -33,7 +33,7 @@ export async function getAvailableModels(
   }
 }
 
-// Generic function that works with any model
+// This function now returns a job_id for async models
 export async function generateContent(
   modelName: string,
   prompt: string,
@@ -41,6 +41,7 @@ export async function generateContent(
 ): Promise<{
   success: boolean;
   resultUrl?: string;
+  jobId?: string;
   error?: string;
 }> {
   try {
@@ -48,40 +49,51 @@ export async function generateContent(
       `http://localhost:8000/api/models/generate/${modelName}`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, ...extraParams }),
       }
     );
 
     if (!response.ok) {
       const errorText = await response.text();
-      return {
-        success: false,
-        error: `Server error: ${errorText}`,
-      };
+      return { success: false, error: `Server error: ${errorText}` };
     }
 
     const result = await response.json();
 
-    if (result.status === "succeeded" && result.result_url) {
-      return {
-        success: true,
-        resultUrl: result.result_url,
-      };
+    if (result.status === "succeeded") {
+      return { success: true, resultUrl: result.result_url };
+    } else if (result.status === "processing") {
+      return { success: true, jobId: result.job_id };
+    } else {
+      return { success: false, error: "Generation failed" };
     }
-
-    return {
-      success: false,
-      error: "Generation failed - no result URL received",
-    };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
+}
+
+// NEW function to poll for job status
+export async function pollJobStatus(jobId: string): Promise<{
+  status: "processing" | "succeeded" | "failed";
+  resultUrl?: string;
+  error?: string;
+}> {
+  const response = await fetch(
+    `http://localhost:8000/api/models/status/${jobId}`
+  );
+  if (!response.ok) {
+    return { status: "failed", error: "Failed to check job status" };
+  }
+  const data = await response.json();
+  return {
+    status: data.status,
+    resultUrl: data.result_url,
+    error: data.error_message,
+  };
 }
 
 // Keep these for backward compatibility

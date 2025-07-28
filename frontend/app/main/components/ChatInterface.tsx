@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Image, Video } from "lucide-react";
-import { generateContent, getAvailableModels } from "./action";
+import { generateContent, getAvailableModels, pollJobStatus } from "./action";
 
 interface ModelData {
   name: string;
@@ -81,26 +81,81 @@ export default function ChatInterface({
 
     setIsGenerating(true);
     setError(null);
+    const promptToSend = prompt;
+    setPrompt(""); // Clear prompt immediately
 
-    const result = await generateContent(selectedModel, prompt);
+    const response = await generateContent(selectedModel, promptToSend);
 
-    if (result.success && result.resultUrl) {
-      const newMediaItem: MediaItem = {
-        id: `${selectedType}-${Date.now()}`,
-        type: selectedType,
-        name: `${currentModel?.display_name}: ${prompt.slice(0, 30)}...`,
-        url: result.resultUrl,
-        thumbnail: selectedType === "image" ? result.resultUrl : undefined,
-        isPending: false,
-      };
-
-      setMediaLibrary((prev) => [newMediaItem, ...prev]);
-      setPrompt("");
+    if (response.success) {
+      if (response.resultUrl) {
+        // --- SYNC FLOW (Image) ---
+        addMediaItem(response.resultUrl, promptToSend);
+      } else if (response.jobId) {
+        // --- ASYNC FLOW (Video) ---
+        const pendingId = `pending-${response.jobId}`;
+        addPendingItem(pendingId, promptToSend);
+        pollForCompletion(response.jobId, pendingId, promptToSend);
+      }
     } else {
-      setError(result.error || `Failed to generate ${selectedType}`);
+      setError(response.error || `Failed to generate ${selectedType}`);
     }
 
     setIsGenerating(false);
+  };
+
+  const addMediaItem = (url: string, prompt: string) => {
+    const newMediaItem: MediaItem = {
+      id: `${selectedType}-${Date.now()}`,
+      type: selectedType,
+      name: `${currentModel?.display_name}: ${prompt.slice(0, 30)}...`,
+      url: url,
+      thumbnail: selectedType === "image" ? url : undefined,
+      isPending: false,
+    };
+    setMediaLibrary((prev) => [newMediaItem, ...prev]);
+  };
+
+  const addPendingItem = (pendingId: string, prompt: string) => {
+    const pendingItem: MediaItem = {
+      id: pendingId,
+      type: selectedType,
+      name: `Generating: ${prompt.slice(0, 30)}...`,
+      url: "", // No URL yet
+      isPending: true,
+    };
+    setMediaLibrary((prev) => [pendingItem, ...prev]);
+  };
+
+  const pollForCompletion = async (
+    jobId: string,
+    pendingId: string,
+    prompt: string
+  ) => {
+    const interval = setInterval(async () => {
+      const statusResult = await pollJobStatus(jobId);
+      if (statusResult.status === "succeeded" && statusResult.resultUrl) {
+        clearInterval(interval);
+        const finalItem: MediaItem = {
+          id: pendingId, // Keep the same ID
+          type: selectedType,
+          name: `${currentModel?.display_name}: ${prompt.slice(0, 30)}...`,
+          url: statusResult.resultUrl,
+          thumbnail:
+            selectedType === "image" ? statusResult.resultUrl : undefined,
+          isPending: false,
+        };
+        // Replace pending item with the final one
+        setMediaLibrary((prev) =>
+          prev.map((item) => (item.id === pendingId ? finalItem : item))
+        );
+      } else if (statusResult.status === "failed") {
+        clearInterval(interval);
+        setError(statusResult.error || "Generation failed.");
+        // Remove the pending item
+        setMediaLibrary((prev) => prev.filter((item) => item.id !== pendingId));
+      }
+      // If still processing, do nothing and wait for the next poll
+    }, 5000); // Poll every 5 seconds
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
