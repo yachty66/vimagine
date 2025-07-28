@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Play, ArrowUp, Video, Plus } from "lucide-react";
+import { Play, ArrowUp, Video, Plus, Edit2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -37,6 +37,8 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const [editingProjectId, setEditingProjectId] = useState<number | null>(null);
+  const [editingProjectName, setEditingProjectName] = useState("");
 
   // Check if user is already logged in and listen for auth changes
   useEffect(() => {
@@ -197,6 +199,101 @@ export default function HomePage() {
     return avatarUrl;
   };
 
+  // Function to delete a project
+  const handleDeleteProject = async (
+    project: Project,
+    event: React.MouseEvent
+  ) => {
+    event.stopPropagation(); // Prevent card click when clicking delete button
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete "${project.name}"? This action cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from("projects")
+        .delete()
+        .eq("id", project.id)
+        .eq("user_id", user?.id); // Extra security check
+
+      if (error) {
+        console.error("Error deleting project:", error);
+        alert("Failed to delete project. Please try again.");
+        return;
+      }
+
+      // Remove project from local state
+      setProjects((prev) => prev.filter((p) => p.id !== project.id));
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      alert("Failed to delete project. Please try again.");
+    }
+  };
+
+  // Function to start editing a project name
+  const handleStartEdit = (project: Project, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent card click when clicking edit button
+    setEditingProjectId(project.id);
+    setEditingProjectName(project.name);
+  };
+
+  // Function to save edited project name
+  const handleSaveEdit = async (projectId: number) => {
+    if (!editingProjectName.trim()) {
+      alert("Project name cannot be empty");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("projects")
+        .update({ name: editingProjectName.trim() })
+        .eq("id", projectId)
+        .eq("user_id", user?.id); // Extra security check
+
+      if (error) {
+        console.error("Error updating project:", error);
+        alert("Failed to update project name. Please try again.");
+        return;
+      }
+
+      // Update project in local state
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === projectId ? { ...p, name: editingProjectName.trim() } : p
+        )
+      );
+
+      // Exit edit mode
+      setEditingProjectId(null);
+      setEditingProjectName("");
+    } catch (error) {
+      console.error("Error updating project:", error);
+      alert("Failed to update project name. Please try again.");
+    }
+  };
+
+  // Function to cancel editing
+  const handleCancelEdit = () => {
+    setEditingProjectId(null);
+    setEditingProjectName("");
+  };
+
+  // Handle key press in edit input
+  const handleEditKeyPress = (
+    event: React.KeyboardEvent,
+    projectId: number
+  ) => {
+    if (event.key === "Enter") {
+      handleSaveEdit(projectId);
+    } else if (event.key === "Escape") {
+      handleCancelEdit();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black">
       {/* Pure Black & White Header */}
@@ -349,10 +446,33 @@ export default function HomePage() {
               {projects.map((project) => (
                 <Card
                   key={project.id}
-                  className="group hover:border-white transition-colors bg-black border-white/20 cursor-pointer"
-                  onClick={() => handleProjectClick(project)}
+                  className="group hover:border-white transition-colors bg-black border-white/20 cursor-pointer relative"
+                  onClick={() =>
+                    editingProjectId !== project.id &&
+                    handleProjectClick(project)
+                  }
                 >
                   <CardContent className="p-3">
+                    {/* Action buttons - show on hover */}
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 bg-black/60 hover:bg-zinc-800 text-white/70 hover:text-white"
+                        onClick={(e) => handleStartEdit(project, e)}
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 bg-black/60 hover:bg-zinc-700 text-white/70 hover:text-white"
+                        onClick={(e) => handleDeleteProject(project, e)}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+
                     <div className="aspect-video bg-white/5 rounded-lg relative overflow-hidden border border-white/10">
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="text-center">
@@ -363,13 +483,50 @@ export default function HomePage() {
                         </div>
                       </div>
                     </div>
+
                     <div className="mt-2">
-                      <h3 className="text-sm font-medium text-white/80 truncate">
-                        {project.name}
-                      </h3>
-                      <p className="text-xs text-white/50 mt-1">
-                        {formatDate(project.created_at)}
-                      </p>
+                      {editingProjectId === project.id ? (
+                        // Edit mode
+                        <div className="space-y-2">
+                          <Input
+                            value={editingProjectName}
+                            onChange={(e) =>
+                              setEditingProjectName(e.target.value)
+                            }
+                            onKeyDown={(e) => handleEditKeyPress(e, project.id)}
+                            className="text-sm bg-zinc-800 border-zinc-600 text-white"
+                            autoFocus
+                            onBlur={() => handleSaveEdit(project.id)}
+                          />
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              className="h-6 px-2 text-xs bg-white text-black hover:bg-white/90"
+                              onClick={() => handleSaveEdit(project.id)}
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-2 text-xs text-white/60 hover:text-white/80"
+                              onClick={handleCancelEdit}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        // View mode
+                        <>
+                          <h3 className="text-sm font-medium text-white/80 truncate">
+                            {project.name}
+                          </h3>
+                          <p className="text-xs text-white/50 mt-1">
+                            {formatDate(project.created_at)}
+                          </p>
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

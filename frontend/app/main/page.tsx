@@ -56,7 +56,7 @@ export default function MainEditorPage() {
   ): Promise<MediaItem[]> => {
     try {
       const { data: mediaFiles, error } = await supabase
-        .from("ai_editor_media_files")
+        .from("files") // Changed from "ai_editor_media_files" to "files"
         .select("*")
         .eq("project_id", projectId)
         .order("created_at", { ascending: true });
@@ -253,7 +253,7 @@ export default function MainEditorPage() {
 
       // Check if file with same name already exists in database to prevent duplicates
       const { data: existingFiles, error: checkError } = await supabase
-        .from("ai_editor_media_files")
+        .from("files") // Changed from "ai_editor_media_files" to "files"
         .select("id, file_url")
         .eq("project_id", projectId)
         .limit(100); // Get all files for this project
@@ -279,7 +279,8 @@ export default function MainEditorPage() {
       }
 
       // File doesn't exist, safe to insert
-      const { error } = await supabase.from("ai_editor_media_files").insert({
+      const { error } = await supabase.from("files").insert({
+        // Changed from "ai_editor_media_files" to "files"
         project_id: projectId,
         file_url: mediaItem.url,
         type: mediaItem.type,

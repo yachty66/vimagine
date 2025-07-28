@@ -289,16 +289,9 @@ export default function MediaLibrary({
     return null;
   };
 
-  // Get appropriate upload endpoint based on file type
+  // Simplified upload endpoint - now uses single route for all media types
   const getUploadEndpoint = (type: "video" | "image" | "audio"): string => {
-    switch (type) {
-      case "image":
-        return "/api/upload-image";
-      case "video":
-        return "/api/upload-video";
-      case "audio":
-        return "/api/upload-audio";
-    }
+    return "/api/upload"; // Single endpoint for all media types
   };
 
   // Save new files to Supabase (for newly uploaded/generated files) - with filename deduplication
@@ -314,7 +307,7 @@ export default function MediaLibrary({
 
       // Check if file with same name already exists in database to prevent duplicates
       const { data: existingFiles, error: checkError } = await supabase
-        .from("ai_editor_media_files")
+        .from("files") // Changed from "ai_editor_media_files" to "files"
         .select("id, file_url")
         .eq("project_id", projectId)
         .limit(100); // Get all files for this project
@@ -340,7 +333,8 @@ export default function MediaLibrary({
       }
 
       // File doesn't exist, safe to insert
-      const { error } = await supabase.from("ai_editor_media_files").insert({
+      const { error } = await supabase.from("files").insert({
+        // Changed from "ai_editor_media_files" to "files"
         project_id: projectId,
         file_url: mediaItem.url,
         type: mediaItem.type,
@@ -480,18 +474,30 @@ export default function MediaLibrary({
       }));
 
       try {
-        // Upload to blob storage
-        const blob = await upload(file.name, file, {
-          access: "public",
-          handleUploadUrl: getUploadEndpoint(fileType!),
+        // For custom upload (S3/Supabase)
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+          // Do NOT set Content-Type header manually,
+          // the browser will automatically set it to multipart/form-data
+          // with the correct boundary.
         });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || "Upload failed");
+        }
 
         const newMediaItem: MediaItem = {
           id: `uploaded-${Date.now()}-${Math.random()}`,
           type: fileType!,
           name: file.name,
-          url: blob.url,
-          thumbnail: fileType === "image" ? blob.url : undefined,
+          url: result.url, // The URL from your storage provider
+          thumbnail: fileType === "image" ? result.url : undefined,
         };
 
         uploadedItems.push(newMediaItem);
@@ -635,7 +641,7 @@ export default function MediaLibrary({
         const dbId = item.id.replace("db-", ""); // Extract the actual database ID
 
         const { error } = await supabase
-          .from("ai_editor_media_files")
+          .from("files") // Changed from "ai_editor_media_files" to "files"
           .delete()
           .eq("id", parseInt(dbId))
           .eq("project_id", projectId); // Extra safety check
