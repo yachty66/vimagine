@@ -91,8 +91,35 @@ export default function HomePage() {
   };
 
   // Handle creating a new project
-  const handleNewProject = () => {
-    router.push("/main");
+  const handleNewProject = async () => {
+    if (!user) {
+      handleGetStarted();
+      return;
+    }
+
+    try {
+      // Create a new project in the database
+      const { data, error } = await supabase
+        .from("projects")
+        .insert({
+          name: "untitled_project",
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error creating project:", error);
+        alert("Failed to create project. Please try again.");
+        return;
+      }
+
+      // Navigate to main page with the new project ID
+      router.push(`/main?projectId=${data.id}`);
+    } catch (error) {
+      console.error("Error creating project:", error);
+      alert("Failed to create project. Please try again.");
+    }
   };
 
   // Get user's profile picture URL

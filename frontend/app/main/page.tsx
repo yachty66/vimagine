@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import MediaLibrary from "./components/MediaLibrary";
 import VideoPreview from "./components/VideoPreview";
 import ChatInterface from "./components/ChatInterface";
@@ -36,6 +37,7 @@ const TRACK_CONFIG = {
 };
 
 export default function MainEditorPage() {
+  const searchParams = useSearchParams();
   const [mediaLibrary, setMediaLibrary] = useState<MediaItem[]>([]);
   const [timelineItems, setTimelineItems] = useState<TimelineItem[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -99,16 +101,46 @@ export default function MainEditorPage() {
   useEffect(() => {
     const initializeProject = async () => {
       try {
-        const savedProjectId = localStorage.getItem("currentProjectId");
-        const savedProjectName = localStorage.getItem("currentProjectName");
+        // First check for projectId from URL parameters
+        const urlProjectId = searchParams.get("projectId");
 
-        if (!savedProjectId || !savedProjectName) {
-          throw new Error("No project selected");
+        let id: number;
+        let name: string;
+
+        if (urlProjectId) {
+          // Project ID from URL - fetch project details from database
+          id = parseInt(urlProjectId);
+
+          const { data: project, error } = await supabase
+            .from("projects")
+            .select("name")
+            .eq("id", id)
+            .single();
+
+          if (error || !project) {
+            throw new Error("Project not found");
+          }
+
+          name = project.name;
+
+          // Store in localStorage for future visits
+          localStorage.setItem("currentProjectId", id.toString());
+          localStorage.setItem("currentProjectName", name);
+        } else {
+          // Fall back to localStorage (existing behavior)
+          const savedProjectId = localStorage.getItem("currentProjectId");
+          const savedProjectName = localStorage.getItem("currentProjectName");
+
+          if (!savedProjectId || !savedProjectName) {
+            throw new Error("No project selected");
+          }
+
+          id = parseInt(savedProjectId);
+          name = savedProjectName;
         }
 
-        const id = parseInt(savedProjectId);
         setProjectId(id);
-        setProjectName(savedProjectName);
+        setProjectName(name);
 
         // Load existing media files for this project
         console.log("Loading media files for project:", id);
@@ -122,23 +154,23 @@ export default function MainEditorPage() {
         );
       } catch (error) {
         console.error("Failed to initialize project:", error);
-        // If there's an error, we could redirect back to project selection
-        // router.push('/inference/editor');
+        // If there's an error, we could redirect back to home page
+        // router.push('/');
       } finally {
         setIsLoading(false);
       }
     };
 
     initializeProject();
-  }, []);
+  }, [searchParams]);
 
-  // Save project name to Supabase
+  // Save project name to Supabase (update to use 'projects' table)
   const saveProjectName = async (newName: string) => {
     if (!projectId || !newName.trim()) return false;
 
     try {
       const { error } = await supabase
-        .from("ai_video_editor_projects")
+        .from("projects")
         .update({ name: newName.trim() })
         .eq("id", projectId);
 
