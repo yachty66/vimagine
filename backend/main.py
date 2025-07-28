@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from models.dynamic_models import router as dynamic_models_router
+from helpers.video_composer import router as video_composer_router
 
 app = FastAPI()
 
@@ -18,6 +19,13 @@ app.include_router(
     dynamic_models_router, 
     prefix="/api/models",
     tags=["models"]
+)
+
+# Include the video composer router
+app.include_router(
+    video_composer_router,
+    prefix="/api/py/video-composer",
+    tags=["video-composer"]
 )
 
 @app.get("/")

@@ -309,13 +309,16 @@ export default function VideoPreview({
       console.log("Sending timeline data for composition:", timelineData);
 
       // Send timeline data to backend for video composition
-      const response = await fetch("/api/py/video-composer/compose-video", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(timelineData),
-      });
+      const response = await fetch(
+        "http://localhost:8000/api/py/video-composer/compose-video",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(timelineData),
+        }
+      );
 
       console.log("Response status:", response.status);
 
@@ -356,7 +359,7 @@ export default function VideoPreview({
     while (attempts < maxAttempts) {
       try {
         const response = await fetch(
-          `/api/py/video-composer/compose-video/status/${jobId}`
+          `http://localhost:8000/api/py/video-composer/compose-video/status/${jobId}`
         );
 
         if (!response.ok) {
