@@ -27,6 +27,12 @@ export class AIEditorAPI {
   }
 
   private async getApiKey(): Promise<string> {
+    // --- TEMPORARY BYPASS FOR LOCAL DEVELOPMENT ---
+    // The simplified backend doesn't validate the key, so we can use a dummy value.
+    // TODO: Re-enable this for production.
+    return "local-dev-dummy-key";
+    // --- END TEMPORARY BYPASS ---
+
     if (this.apiKey) return this.apiKey;
 
     const {
@@ -368,6 +374,109 @@ export class AIEditorAPI {
       console.error("Image upload failed:", error);
       throw new Error("Failed to upload reference image");
     }
+  }
+
+  // --- ADD THIS NEW FUNCTION ---
+  async generateFluxImage(
+    prompt: string
+  ): Promise<{ success: boolean; result_url?: string; error?: string }> {
+    try {
+      // This still uses your bypassed getApiKey() to get a dummy key
+      const apiKey = await this.getApiKey();
+
+      const apiEndpoint = `${this.baseUrl}/api/py/flux-schnell/generate`;
+
+      const response = await fetch(apiEndpoint, {
+        method: "POST",
+        headers: {
+          "X-API-Key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prompt }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let detail = errorText;
+        try {
+          // Try to parse the error for a more specific message
+          const errorJson = JSON.parse(errorText);
+          detail = errorJson.detail || detail;
+        } catch (e) {
+          // Ignore if parsing fails
+        }
+        throw new Error(detail);
+      }
+
+      const result = await response.json();
+
+      if (result.status === "succeeded" && result.result_url) {
+        return { success: true, result_url: result.result_url };
+      } else {
+        throw new Error(
+          result.detail || "Generation failed in an unexpected way."
+        );
+      }
+    } catch (error) {
+      console.error("generateFluxImage failed:", error);
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "An unknown error occurred.",
+      };
+    }
+  }
+}
+
+// --- ADD THIS COMPLETELY SEPARATE FUNCTION ---
+export async function generateFluxImageDirect(
+  prompt: string
+): Promise<{ success: boolean; result_url?: string; error?: string }> {
+  try {
+    // Direct call to your backend without any authentication
+    const apiEndpoint = "http://localhost:8000/api/py/flux-schnell/generate";
+
+    console.log("Calling flux-schnell directly:", { prompt });
+
+    const response = await fetch(apiEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ prompt }),
+    });
+
+    console.log("Response status:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Backend error:", errorText);
+
+      let detail = errorText;
+      try {
+        const errorJson = JSON.parse(errorText);
+        detail = errorJson.detail || detail;
+      } catch (e) {
+        // Ignore parsing errors
+      }
+
+      throw new Error(`Backend error: ${detail}`);
+    }
+
+    const result = await response.json();
+    console.log("Backend result:", result);
+
+    if (result.status === "succeeded" && result.result_url) {
+      return { success: true, result_url: result.result_url };
+    } else {
+      throw new Error(result.detail || "Generation failed unexpectedly");
+    }
+  } catch (error) {
+    console.error("Direct flux generation failed:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    };
   }
 }
 
