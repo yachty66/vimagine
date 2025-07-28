@@ -223,8 +223,8 @@ export default function HomePage() {
             <Button
               variant="outline"
               size="sm"
-              className="border-white/20 text-white hover:bg-white hover:text-black"
-              onClick={handleNewProject} // Updated to use the new handler
+              className="border-white/20 bg-transparent text-white hover:bg-white hover:text-black"
+              onClick={handleNewProject}
             >
               <Plus className="w-4 h-4 mr-2" />
               New Project

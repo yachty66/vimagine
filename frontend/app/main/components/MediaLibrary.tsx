@@ -58,9 +58,13 @@ const generateVideoThumbnail = (videoUrl: string): Promise<string> => {
   return new Promise(async (resolve, reject) => {
     try {
       // Use the backend proxy to fetch the video as a blob
-      const response = await fetch(`/api/download-video?url=${encodeURIComponent(videoUrl)}`);
+      const response = await fetch(
+        `/api/download-video?url=${encodeURIComponent(videoUrl)}`
+      );
       if (!response.ok) {
-        throw new Error(`Failed to fetch video: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch video: ${response.status} ${response.statusText}`
+        );
       }
       const videoBlob = await response.blob();
       const proxiedUrl = URL.createObjectURL(videoBlob);
@@ -162,7 +166,12 @@ const generateVideoThumbnail = (videoUrl: string): Promise<string> => {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
             // Get image data to check if it's black
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(
+              0,
+              0,
+              canvas.width,
+              canvas.height
+            );
 
             // Check if this frame is mostly black
             if (
@@ -236,7 +245,6 @@ const generateVideoThumbnail = (videoUrl: string): Promise<string> => {
         URL.revokeObjectURL(proxiedUrl);
         reject(new Error("Failed to load video from proxied URL"));
       };
-
     } catch (error) {
       reject(error);
     }
